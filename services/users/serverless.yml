@@ -1,0 +1,112 @@
+org: glerm53
+app: yubbe-backend
+service: users
+
+frameworkVersion: '2'
+
+custom:
+  dynamodb:
+    usersTable: ${self:service}-users-${self:provider.stage}
+  serverless-mocha-plugin:
+    testTemplate: ../templates/test-template.ejs
+    functionTemplate: ../templates/function-template.ejs
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.usersTable}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.usersTable}/index/userId
+
+  # you can define service wide environment variables here
+  environment:
+    DDB_USERS_TABLE: ${self:custom.dynamodb.usersTable}
+
+functions:
+  createuser:
+    handler: user.create_user
+    events:
+      - http:
+          method: post
+          cors: true
+          path: /user
+          request:
+            schemas:
+              application/json: ${file(schemas/create_user_request.json)}
+  readuser:
+    handler: user.read_user
+    events:
+      - http:
+          method: get
+          path: /user
+          request:
+            parameters:
+              querystrings:
+                userId: true
+
+  updateuser:
+    handler: user.update_user
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /user
+          request:
+            schemas:
+              application/json: ${file(schemas/create_user_request.json)}
+  deleteuser:
+    handler: user.delete_user
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /user
+          request:
+            parameters:
+              querystrings:
+                userId: true
+
+resources:
+  Resources:
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodb.usersTable}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+
+  Outputs:
+    UsersTableArn:
+      Description: The ARN for the users' Table
+      Value:
+        'Fn::GetAtt': [usersTable, Arn]
+      Export:
+        Name: ${self:service}:${self:provider.stage}:usersTableArn # see Fn::ImportValue to use in other services and http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html for documentation on use.
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env

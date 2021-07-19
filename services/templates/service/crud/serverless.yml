@@ -1,0 +1,112 @@
+org: glerm53
+app: yubbe-backend
+service: crud
+
+frameworkVersion: '2'
+
+custom:
+  dynamodb:
+    xxxxxxsTable: ${self:service}-xxxxxxs-${self:provider.stage}
+  serverless-mocha-plugin:
+    testTemplate: ../templates/test-template.ejs
+    functionTemplate: ../templates/function-template.ejs
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.xxxxxxsTable}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.xxxxxxsTable}/index/xxxxxxId
+
+  # you can define service wide environment variables here
+  environment:
+    DDB_xxxxxxS_TABLE: ${self:custom.dynamodb.xxxxxxsTable}
+
+functions:
+  create:
+    handler: single_handler.create
+    events:
+      - http:
+          method: post
+          cors: true
+          path: /xxxxxx
+          request:
+            schemas:
+              application/json: ${file(schemas/create_request.json)}
+  read:
+    handler: single_handler.read
+    events:
+      - http:
+          method: get
+          path: /xxxxxx
+          request:
+            parameters:
+              querystrings:
+                xxxxxxId: true
+
+  update:
+    handler: single_handler.update
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /xxxxxx
+          request:
+            schemas:
+              application/json: ${file(schemas/create_request.json)}
+  delete:
+    handler: single_handler.delete
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /xxxxxx
+          request:
+            parameters:
+              querystrings:
+                xxxxxxId: true
+
+resources:
+  Resources:
+    xxxxxxsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodb.xxxxxxsTable}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+
+
+  Outputs:
+    UsersTableArn:
+      Description: The ARN for the xxxxxxs' Table
+      Value:
+        'Fn::GetAtt': [xxxxxxsTable, Arn]
+      Export:
+        Name: ${self:service}:${self:provider.stage}:xxxxxxsTableArn # see Fn::ImportValue to use in other services and http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html for documentation on use.
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env

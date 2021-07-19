@@ -1,0 +1,30 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "Create Meeting Schema",
+    "required": [
+      "meetingId",
+      "start"
+    ],
+    "properties": {
+      "meetingId": {
+        "type": "string",
+        "title": "id",
+        "minLength": 3,
+        "maxLength": 50
+      },
+      "start": {
+        "title": "start",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50
+      },
+      "tag":{
+        "type": "string",
+        "title": "tag",
+        "minLength": 3,
+        "maxLength": 50
+      }
+    }
+  }

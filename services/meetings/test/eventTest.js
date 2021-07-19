@@ -9,13 +9,13 @@ const mochaPlugin = require('serverless-mocha');
 const expect = mochaPlugin.chai.expect;
 let wrapped = mochaPlugin.getWrapper('eventTest', '/src/default/read_event.js', 'handler');
 
-describe('eventTest', () => {
+describe('Create meeting', () => {
   before((done) => {
     done();
   });
 
-  it('implement tests here', async () => {
+  it('Correct event', async () => {
     const response = await wrapped.run({});
-    expect(response).to.not.be.empty;
+    expect(response.statusCode).to.be.equal(201);
   });
 });

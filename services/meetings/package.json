@@ -1,6 +1,5 @@
 {
   "name": "v01-yubbe-backendse",
-  "description": "",
   "version": "0.1.0",
   "dependencies": {},
   "devDependencies": {
@@ -14,5 +13,12 @@
   },
   "scripts": {
     "test": "serverless invoke test"
-  }
+  },
+  "main": "meeting.js",
+  "directories": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
 }

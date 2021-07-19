@@ -8,8 +8,8 @@ custom:
   dynamodb:
     meetingsTable: ${self:service}-meetings-${self:provider.stage}
   serverless-mocha-plugin:
-    testTemplate: templates/test-template.ejs
-    functionTemplate: templates/function-template.ejs
+    testTemplate: ../templates/test-template.ejs
+    functionTemplate: ../templates/function-template.ejs
 
 provider:
   name: aws
@@ -24,8 +24,12 @@ provider:
       statements:
         - Effect: Allow
           Action:
-            - "dynamodb:Query"
-            - "dynamodb:putItem"
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
           Resource: 
             - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable}
             - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable}/index/meetingId
@@ -35,16 +39,8 @@ provider:
     DDB_MEETINGS_TABLE: ${self:custom.dynamodb.meetingsTable}
 
 functions:
-  eventTest:
-    handler: src/default/read_event.handler
-    events:
-      - http:
-          method: post
-          cors: true
-          path: /test
-
   createMeeting:
-    handler: src/meetings/meeting.create_meeting
+    handler: meeting.create_meeting
     events:
       - http:
           method: post
@@ -52,7 +48,39 @@ functions:
           path: /meeting
           request:
             schemas:
-              application/json: ${file(src/meetings/schemas/create_meeting_request.json)}
+              application/json: ${file(schemas/create_meeting_request.json)}
+  readMeeting:
+    handler: meeting.read_meeting
+    events:
+      - http:
+          method: get
+          path: /meeting
+          request:
+            parameters:
+              querystrings:
+                meetingId: true
+
+  updateMeeting:
+    handler: meeting.update_meeting
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /meeting
+          request:
+            schemas:
+              application/json: ${file(schemas/create_meeting_request.json)}
+  deleteMeeting:
+    handler: meeting.delete_meeting
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /meeting
+          request:
+            parameters:
+              querystrings:
+                meetingId: true
 
 resources:
   Resources:

@@ -1,0 +1,36 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "Create Meeting Schema",
+    "required": [
+      "userId",
+      "email"
+    ],
+    "properties": {
+      "userId": {
+        "type": "string",
+        "title": "id",
+        "minLength": 3,
+        "maxLength": 50
+      },
+      "email": {
+        "title": "email",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50
+      },
+      "name":{
+        "type": "string",
+        "title": "name",
+        "minLength": 3,
+        "maxLength": 50
+      },
+      "role":{
+        "type": "string",
+        "title": "role",
+        "minLength": 3,
+        "maxLength": 50
+      }
+    }
+  }
