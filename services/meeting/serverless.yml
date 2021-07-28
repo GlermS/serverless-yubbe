@@ -1,0 +1,134 @@
+org: glerm53
+app: yubbe-backend
+service: meetings
+projectDir: ../../
+
+frameworkVersion: '2'
+
+custom: ${file(../../serverless.common.yml):custom}
+
+provider:
+  name:   ${file(../../serverless.common.yml):provider.name}
+  runtime:  ${file(../../serverless.common.yml):provider.runtime}
+  lambdaHashingVersion: ${file(../../serverless.common.yml):provider.lambdaHashingVersion}
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  region: ${file(../../serverless.common.yml):provider.region}
+  stackName: ${file(../../serverless.common.yml):provider.stackName.meetings}
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable.name}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable.name}/index/meetingId
+  # you can define service wide environment variables here
+  environment:
+    DDB_MEETINGS_TABLE: ${self:custom.dynamodb.meetingsTable.name}
+
+functions:
+  createMeeting:
+    handler: meeting.create_meeting
+    events:
+      - http:
+          method: post
+          cors: true
+          path: /meeting
+          request:
+            schemas:
+              application/json: ${file(schemas/create_meeting_request.json)}
+  readMeeting:
+    handler: meeting.read_meeting
+    events:
+      - http:
+          method: get
+          path: /meeting
+          request:
+            parameters:
+              querystrings:
+                meetingId: true
+  updateMeeting:
+    handler: meeting.update_meeting
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /meeting
+          request:
+            schemas:
+              application/json: ${file(schemas/create_meeting_request.json)}
+  deleteMeeting:
+    handler: meeting.delete_meeting
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /meeting
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              querystrings:
+                meetingId: true
+                
+  listMeetings:
+    handler: meeting.list_meetings
+    events:
+      - http:
+          cors: true
+          method: get
+          path: /meetings
+  joinMeeting:
+      handler: meeting.join_meeting
+      events:
+        - http:
+            method: post
+            cors: true
+            path: /meeting/join
+            authorizer: 
+                    type: COGNITO_USER_POOLS
+                    authorizerId: 
+                      Ref: ApiGatewayAuthorizer
+            request:
+              parameters:
+                querystrings:
+                  meetingId: true          
+resources:
+  Resources:
+    meetingsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodb.meetingsTable.name}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    ApiGatewayAuthorizer: 
+      ${file(../../serverless.common.yml):resources.ApiGatewayAuthorizer} 
+
+
+  Outputs:
+    MeetingsTableArn:
+      Description: The ARN for the Meetings' Table
+      Value:
+        'Fn::GetAtt': [meetingsTable, Arn]
+      Export: ${file(../../serverless.common.yml):custom.dynamodb.meetingsTable.export}
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env

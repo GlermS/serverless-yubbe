@@ -1,0 +1,91 @@
+org: glerm53
+app: yubbe-backend
+service: bot
+projectDir: ../../
+
+frameworkVersion: '2'
+
+custom: ${file(../../serverless.common.yml):custom}
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env
+  - serverless-websockets-plugin
+provider:
+  name:   ${file(../../serverless.common.yml):provider.name}
+  runtime:  ${file(../../serverless.common.yml):provider.runtime}
+  lambdaHashingVersion: ${file(../../serverless.common.yml):provider.lambdaHashingVersion}
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  region: ${file(../../serverless.common.yml):provider.region}
+  stackName: ${file(../../serverless.common.yml):provider.stackName.bot}
+  websocketsApiName: custom-websockets-api-name
+  websocketsApiRouteSelectionExpression: $request.body.action # custom routes are selected by the value of the action property in the body
+  logs:
+    websocket: true
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable.name}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable.name}/index/meetingId
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.topicsTable.name}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.topicsTable.name}/index/topicId
+  # you can define service wide environment variables here
+  environment:
+    DDB_MEETINGS_TABLE: ${self:custom.dynamodb.meetingsTable.name}
+    DDB_TOPICS_TABLE: ${self:custom.dynamodb.topicsTable.name}
+
+functions:
+  joinMeetingChannel:
+    handler: bot.join_meeting_channel
+    events:
+    - websocket:
+        route: $connect
+  chooseSpeaker:
+    handler: bot.choose_speaker
+    events:
+    - websocket:
+        route: choose_speaker
+  suggestTopic:
+    handler: bot.suggest_topic
+    events:
+    - websocket:
+        route: suggest_topic
+          
+resources:
+  # Resources:
+  #   topicsTable:
+  #     Type: AWS::DynamoDB::Table
+  #     Properties:
+  #       TableName: ${self:custom.dynamodb.topicsTable.name}
+  #       AttributeDefinitions:
+  #         - AttributeName: id
+  #           AttributeType: S
+  #       KeySchema:
+  #         - AttributeName: id
+  #           KeyType: HASH
+  #       ProvisionedThroughput:
+  #         ReadCapacityUnits: 1
+  #         WriteCapacityUnits: 1
+  #   # ApiGatewayAuthorizer: 
+    #   ${file(../../serverless.common.yml):resources.ApiGatewayAuthorizer} 
+
+
+  # Outputs:
+  #   TopicsTableArn:
+  #     Description: The ARN for the Topics' Table
+  #     Value:
+  #       'Fn::GetAtt': [topicsTable, Arn]
+  #     Export: ${file(../../serverless.common.yml):custom.dynamodb.topicsTable.export}
+
+

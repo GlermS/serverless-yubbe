@@ -1,0 +1,30 @@
+{
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "type": "object",
+    "title": "Create TAG Schema",
+    "required": [
+      "tagId",
+      "topicName"
+    ],
+    "properties": {
+      "tagId": {
+        "type": "string",
+        "title": "id",
+        "minLength": 3,
+        "maxLength": 50
+      },
+      "topicName": {
+        "title": "start",
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 50
+      },
+      "topicDescription":{
+        "type": "string",
+        "title": "tag",
+        "minLength": 3,
+        "maxLength": 50
+      }
+    }
+  }

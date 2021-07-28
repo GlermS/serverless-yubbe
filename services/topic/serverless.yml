@@ -1,0 +1,119 @@
+org: glerm53
+app: yubbe-backend
+service: topics
+projectDir: ../../
+
+frameworkVersion: '2'
+
+custom: ${file(../../serverless.common.yml):custom}
+
+provider:
+  name:   ${file(../../serverless.common.yml):provider.name}
+  runtime:  ${file(../../serverless.common.yml):provider.runtime}
+  lambdaHashingVersion: ${file(../../serverless.common.yml):provider.lambdaHashingVersion}
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  region: ${file(../../serverless.common.yml):provider.region}
+  stackName: ${file(../../serverless.common.yml):provider.stackName.topics}
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.topicsTable.name}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.topicsTable.name}/index/topicId
+  # you can define service wide environment variables here
+  environment:
+    DDB_TOPICS_TABLE: ${self:custom.dynamodb.topicsTable.name}
+
+functions:
+  createTopic:
+    handler: topic.create_topic
+    events:
+      - http:
+          method: post
+          cors: true
+          path: /topic
+          request:
+            schemas:
+              application/json: ${file(schemas/create_topic_request.json)}
+  readTopic:
+    handler: topic.read_topic
+    events:
+      - http:
+          method: get
+          path: /topic
+          request:
+            parameters:
+              querystrings:
+                topicId: true
+  updateTopic:
+    handler: topic.update_topic
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /topic
+          request:
+            schemas:
+              application/json: ${file(schemas/put_topic_request.json)}
+  deleteTopic:
+    handler: topic.delete_topic
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /topic
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              querystrings:
+                topicId: true
+  listTopics:
+    handler: topic.list_topics
+    events:
+      - http:
+          cors: true
+          method: get
+          path: /topics
+          
+resources:
+  Resources:
+    topicsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodb.topicsTable.name}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    ApiGatewayAuthorizer: 
+      ${file(../../serverless.common.yml):resources.ApiGatewayAuthorizer} 
+
+
+  Outputs:
+    TopicsTableArn:
+      Description: The ARN for the Topics' Table
+      Value:
+        'Fn::GetAtt': [topicsTable, Arn]
+      Export: ${file(../../serverless.common.yml):custom.dynamodb.topicsTable.export}
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env

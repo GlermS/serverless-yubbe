@@ -1,0 +1,119 @@
+org: glerm53
+app: yubbe-backend
+service: tags
+projectDir: ../../
+
+frameworkVersion: '2'
+
+custom: ${file(../../serverless.common.yml):custom}
+
+provider:
+  name:   ${file(../../serverless.common.yml):provider.name}
+  runtime:  ${file(../../serverless.common.yml):provider.runtime}
+  lambdaHashingVersion: ${file(../../serverless.common.yml):provider.lambdaHashingVersion}
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  region: ${file(../../serverless.common.yml):provider.region}
+  stackName: ${file(../../serverless.common.yml):provider.stackName.tags}
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.tagsTable.name}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.tagsTable.name}/index/tagId
+  # you can define service wide environment variables here
+  environment:
+    DDB_TAGS_TABLE: ${self:custom.dynamodb.tagsTable.name}
+
+functions:
+  createTag:
+    handler: tag.create_tag
+    events:
+      - http:
+          method: post
+          cors: true
+          path: /tag
+          request:
+            schemas:
+              application/json: ${file(schemas/create_tag_request.json)}
+  readTag:
+    handler: tag.read_tag
+    events:
+      - http:
+          method: get
+          path: /tag
+          request:
+            parameters:
+              querystrings:
+                tagId: true
+  updateTag:
+    handler: tag.update_tag
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /tag
+          request:
+            schemas:
+              application/json: ${file(schemas/create_tag_request.json)}
+  deleteTag:
+    handler: tag.delete_tag
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /tag
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              querystrings:
+                tagId: true
+  listTags:
+    handler: tag.list_tags
+    events:
+      - http:
+          cors: true
+          method: get
+          path: /tags
+          
+resources:
+  Resources:
+    tagsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodb.tagsTable.name}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    ApiGatewayAuthorizer: 
+      ${file(../../serverless.common.yml):resources.ApiGatewayAuthorizer} 
+
+
+  Outputs:
+    TagsTableArn:
+      Description: The ARN for the Tags' Table
+      Value:
+        'Fn::GetAtt': [tagsTable, Arn]
+      Export: ${file(../../serverless.common.yml):custom.dynamodb.tagsTable.export}
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env

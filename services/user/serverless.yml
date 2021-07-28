@@ -1,0 +1,187 @@
+org: glerm53
+app: yubbe-backend
+service: users
+projectDir: ../../
+
+frameworkVersion: '2'
+
+custom: ${file(../../serverless.common.yml):custom}
+
+provider:
+  name:   ${file(../../serverless.common.yml):provider.name}
+  runtime:  ${file(../../serverless.common.yml):provider.runtime}
+  lambdaHashingVersion: ${file(../../serverless.common.yml):provider.lambdaHashingVersion}
+  stage: ${file(../../serverless.common.yml):provider.stage}
+  region: ${file(../../serverless.common.yml):provider.region}
+  stackName: ${file(../../serverless.common.yml):provider.stackName.users}
+
+  # you can add statements to the Lambda function's IAM Role here
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource: 
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.usersTable.name}
+            - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.usersTable.name}/index/userId
+
+  # you can define service wide environment variables here
+  environment:
+    DDB_USERS_TABLE: ${self:custom.dynamodb.usersTable.name}
+    DOMAIN_SUFFIX: cogn-test
+
+functions:
+  # createuser:
+  #   handler: user.create_user
+  #   events:
+  #     - http:
+  #         method: post
+  #         cors: true
+  #         path: /user
+  #         request:
+  #           schemas:
+  #             application/json: ${file(schemas/create_user_request.json)}
+  readuser:
+    handler: user.read_user
+    events:
+      - http:
+          method: get
+          path: /user
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              querystrings:
+                userId: true
+  updateuser:
+    handler: user.update_user
+    events:
+      - http:
+          method: put
+          cors: true
+          path: /user
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+          request:
+            schemas:
+              application/json: ${file(schemas/create_user_request.json)}
+  deleteuser:
+    handler: user.delete_user
+    events:
+      - http:
+          method: delete
+          cors: true
+          path: /user
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+          request:
+            parameters:
+              querystrings:
+                userId: true
+  listusers:
+    handler: user.list_users
+    events:
+      - http:
+          method: get
+          path: /users
+          cors: true
+          authorizer: 
+                  type: COGNITO_USER_POOLS
+                  authorizerId: 
+                    Ref: ApiGatewayAuthorizer
+  postsignup:
+    handler: user.postsign_up
+    events:
+      - cognitoUserPool:
+          pool: ${self:custom.cognito.userPool.name}
+          trigger: PostConfirmation
+          existing: true
+
+resources:
+  Resources:
+    usersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodb.usersTable.name}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+    ApiGatewayAuthorizer: 
+      Type: AWS::ApiGateway::Authorizer
+      Properties: 
+        Name: CognitoUserPool
+        Type: COGNITO_USER_POOLS
+        IdentitySource: method.request.header.Authorization
+        RestApiId: 
+          Ref: ApiGatewayRestApi
+        ProviderARNs: 
+          - 'Fn::GetAtt': [serviceUserPool, Arn]
+    serviceUserPool:
+        Type: AWS::Cognito::UserPool
+        Properties:
+          UserPoolName: ${self:custom.cognito.userPool.name}
+          UsernameAttributes:
+            - email
+          AutoVerifiedAttributes:
+            - email
+    serviceUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:custom.cognito.userPoolClient.name}
+        AllowedOAuthFlows:
+          - implicit
+        AllowedOAuthFlowsUserPoolClient: true
+        AllowedOAuthScopes:
+          - phone
+          - email
+          - openid
+          - profile
+          - aws.cognito.signin.user.admin
+        UserPoolId:
+          Ref: serviceUserPool
+        CallbackURLs: 
+          - https://7959ujmusg.execute-api.us-east-1.amazonaws.com/dev/meetings
+        ExplicitAuthFlows:
+          - ALLOW_USER_SRP_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
+        GenerateSecret: false
+        SupportedIdentityProviders: 
+          - COGNITO
+    serviceUserPoolDomain:
+      Type: AWS::Cognito::UserPoolDomain 
+      Properties:
+        UserPoolId: 
+          Ref: serviceUserPool
+        Domain: service-user-pool-domain-${opt:stage, self:provider.stage}-${self:provider.environment.DOMAIN_SUFFIX}
+
+  Outputs:
+    usersTableArn:
+      Description: The ARN for the user' Table
+      Value:
+        'Fn::GetAtt': [usersTable, Arn]
+      Export: ${file(../../serverless.common.yml):custom.dynamodb.usersTable.export}
+    userPoolArn:
+      Description: The ARN for the users' Pool
+      Value:
+        'Fn::GetAtt': [serviceUserPool, Arn]
+      Export: ${file(../../serverless.common.yml):custom.cognito.userPool.export}
+
+plugins: ${file(../../serverless.common.yml):plugins}

@@ -1,0 +1,72 @@
+org: glerm53
+app: yubbe-backend
+
+frameworkVersion: '2'
+
+custom:
+  dynamodb:
+    usersTable: 
+      name: users-users-${self:provider.stage}
+      export:
+        Name:
+          !Sub 'users:${self:provider.stage}:usersTableArn'
+    meetingsTable: 
+      name: meetings-meetings-${self:provider.stage}
+      export:
+        Name: 
+          !Sub 'meetings:${self:provider.stage}:meetingsTableArn' # see Fn::ImportValue to use in other services and http://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/outputs-section-structure.html for documentation on use.
+    topicsTable: 
+      name: topics-topics-${self:provider.stage}
+      export:
+        Name:
+          !Sub 'topics:${self:provider.stage}:topicsTableArn'
+    tagsTable: 
+      name: $tags-tags-${self:provider.stage}
+      export:
+        Name: 
+          !Sub 'tags:${self:provider.stage}:tagsTableArn'
+          
+  cognito:
+    userPool:
+      name: service-user-pool-${opt:stage, self:provider.stage}
+      arn: !ImportValue ${self:custom.cognito.userPool.export.Name}
+      export:
+        Name: 
+          !Sub 'users:${self:provider.stage}:userPoolArn'
+    userPoolClient:
+      name: service-user-pool-client-${opt:stage, self:provider.stage}
+
+  serverless-mocha-plugin:
+      testTemplate: ../templates/test-template.ejs
+      functionTemplate: ../templates/function-template.ejs
+      
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: 20201221
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  stackName:
+    users: users-${self:provider.stage}
+    meetings: meetings-${self:provider.stage}
+    topics: topics-${self:provider.stage}
+    tags: tags-${self:provider.stage}
+    bot: bot-${self:provider.stage}
+
+resources:
+  ApiGatewayAuthorizer: 
+        Type: AWS::ApiGateway::Authorizer
+        Properties: 
+          Name: CognitoUserPool
+          Type: COGNITO_USER_POOLS
+          IdentitySource: method.request.header.Authorization
+          RestApiId: 
+            Ref: ApiGatewayRestApi
+          ProviderARNs: 
+            - Fn::ImportValue:
+                !Sub 'users:dev:userPoolArn'
+
+plugins:
+  - serverless-pseudo-parameters
+  - serverless-mocha
+  - serverless-export-env
