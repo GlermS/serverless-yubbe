@@ -85,7 +85,7 @@ functions:
       - http:
           cors: true
           method: get
-          path: /tags
+          path: /
           
 resources:
   Resources:

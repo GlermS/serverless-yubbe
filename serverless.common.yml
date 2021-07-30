@@ -4,6 +4,9 @@ app: yubbe-backend
 frameworkVersion: '2'
 
 custom:
+  settings:
+    maxNumberOfAttendees: 5
+    defaultRole: standard
   dynamodb:
     usersTable: 
       name: users-users-${self:provider.stage}
@@ -39,6 +42,11 @@ custom:
   serverless-mocha-plugin:
       testTemplate: ../templates/test-template.ejs
       functionTemplate: ../templates/function-template.ejs
+
+  apigateway:
+    customDomain:
+      api:
+        arn: arn:aws:acm:us-east-1:120741030969:certificate/d72009f4-330a-4295-8e2c-45e30b292817
       
 provider:
   name: aws

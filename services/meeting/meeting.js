@@ -1,8 +1,9 @@
 'use strict';
-const aws = require('aws-sdk')
+const aws = require('aws-sdk');
 const uuid = require('uuid');
 
-const ddb = new aws.DynamoDB.DocumentClient()
+const ddb = new aws.DynamoDB.DocumentClient();
+
 let headers = {
   'Access-Control-Allow-Origin':'*',
   'Access-Control-Allow-Credentials':true,
@@ -75,11 +76,7 @@ module.exports.update_meeting = async (event, context) => {
         const result =await ddb.update(meetingParams).promise()
         return {
           statusCode: 200,
-          headers:{
-            'Access-Control-Allow-Origin':'*',
-            'Access-Control-Allow-Credentials':true,
-            'Access-Control-Allow-Headers':'Authorization'
-          }
+          headers
         };
       }catch(putError){
         console.log("!!!ERROR!!!")
@@ -197,8 +194,8 @@ module.exports.list_meetings = async (event, context) => {
   }
 };
 
-// --> JOIN MEETING <-- //
-module.exports.join_meeting = async (event, context) => {
+// --> SUBSCRIBE MEETING <-- //
+module.exports.subscribe_meeting = async (event, context) => {
   const {meetingId} = event.queryStringParameters
   console.log('Event: ',event)
   const {userId} = get_auth_info(event)? get_auth_info(event):{}
@@ -237,6 +234,7 @@ module.exports.join_meeting = async (event, context) => {
     headers 
     }
 };
+
 
 const get_auth_info = (event)=>{
   let data = null

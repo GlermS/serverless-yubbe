@@ -26,9 +26,16 @@ provider:
             - dynamodb:PutItem
             - dynamodb:UpdateItem
             - dynamodb:DeleteItem
+            
           Resource: 
             - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable.name}
             - arn:aws:dynamodb:#{AWS::Region}:#{AWS::AccountId}:table/${self:custom.dynamodb.meetingsTable.name}/index/meetingId
+        
+        - Effect: Allow 
+          Action: 
+            - chime:*
+          Resource:  
+            - "*"
   # you can define service wide environment variables here
   environment:
     DDB_MEETINGS_TABLE: ${self:custom.dynamodb.meetingsTable.name}
@@ -46,6 +53,8 @@ functions:
               application/json: ${file(schemas/create_meeting_request.json)}
   readMeeting:
     handler: meeting.read_meeting
+    cors: 
+      origin: '*' 
     events:
       - http:
           method: get
@@ -86,14 +95,32 @@ functions:
       - http:
           cors: true
           method: get
-          path: /meetings
-  joinMeeting:
-      handler: meeting.join_meeting
+          path: /
+          
+  subscribeMeeting:
+      handler: meeting.subscribe_meeting
       events:
         - http:
             method: post
             cors: true
-            path: /meeting/join
+            path: /subscribe
+            authorizer: 
+                    type: COGNITO_USER_POOLS
+                    authorizerId: 
+                      Ref: ApiGatewayAuthorizer
+            request:
+              parameters:
+                querystrings:
+                  meetingId: true        
+  joinMeeting:
+      handler: room.join_meeting
+      events:
+        - http:
+            method: get
+            cors: 
+              origin: '*'
+              headers: '*'
+            path: /join
             authorizer: 
                     type: COGNITO_USER_POOLS
                     authorizerId: 

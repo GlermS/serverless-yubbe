@@ -9,54 +9,6 @@ let headers = {
   'Access-Control-Allow-Headers':'Authorization'
 }
 
-// // --> CREATE user <-- //
-// module.exports.create_user = async (event, context) => {
-//   if(event.body){
-//     const body = JSON.parse(event.body)
-//     var {email, firstName, lastName, role} = body
-//     if (email){
-//       if(!role){
-//         role = 'standard'
-//       }
-//       try{
-//         const userId =await generateId(process.env.DDB_USERS_TABLE)
-//         const userParams = {
-//           TableName: process.env.DDB_USERS_TABLE,
-//           Item: {
-//             id: userId,
-//             email,
-//             first_name: firstName,
-//             last_name: lastName,
-//             role,
-//             created_at: Date.now()
-//           }
-//         }
-//         const result =await ddb.put(userParams).promise()
-//         return {
-//           statusCode: 201,
-//           headers
-//         };
-//       }catch(putError){
-//         console.log("!!!ERROR!!!")
-//         console.log(putError)
-//         return {
-//           statusCode: 500,
-//           headers
-//         };
-//       }
-//     }else{
-//       return {
-//         statusCode: 400,
-//         headers,
-//         body: "Missing required parameter"
-//       };
-//     }
-//   }
-//   return {
-//     statusCode: 400,
-//     headers
-//   }
-// };
 // --> UPDATE user <-- //
 module.exports.update_user = async (event, context) => {
   console.log(context)
